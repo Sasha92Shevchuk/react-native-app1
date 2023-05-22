@@ -42,7 +42,8 @@ export const LoginScreen = () => {
     Keyboard.dismiss();
     setState(initialState);
     // Alert.alert("Credentials", `${state.email} + ${state.password}`);
-    navigation.navigate("HomeScreen", { email: state.email });
+    // navigation.navigate("HomeScreen", { email: state.email });
+    navigation.navigate("HomeScreen", { screen: "CreatePosts" });
   };
 
   return (

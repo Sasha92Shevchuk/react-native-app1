@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import { EvilIcons } from "@expo/vector-icons";
 import {
@@ -7,12 +7,27 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ScrollView,
+  SafeAreaView,
+  FlatList,
 } from "react-native";
+import * as Location from "expo-location";
 
 import { PostImage } from "../../components/PostImage/PostImage";
 
-export const PostsScreen = ({ navigation }) => {
+export const PostsScreen = ({ navigation, route }) => {
+  const [posts, setPosts] = useState([]);
+  const { post } = route.params;
+  console.log("PostsScreen ~ post:", post);
+  const { location } = route.params.post;
+  console.log("PostsScreen ~ location:", location);
+
+  useEffect(() => {
+    if (post) {
+      setPosts((prevState) => [...prevState, post]);
+    }
+  }, [post]);
+  console.log("те що записується в стейт", posts);
+
   const handleGoComments = () => {
     navigation.navigate("Comments");
   };
@@ -20,23 +35,50 @@ export const PostsScreen = ({ navigation }) => {
     navigation.navigate("Map");
   };
   return (
-    <ScrollView>
-      <View style={styles.container}>
-        <View>
-          <View style={styles.profileContainer}>
-            <Image
-              source={{
-                uri: "https://ui-avatars.com/api/?name=Natali+Romanuik&background=random",
-              }}
-              style={styles.profileImage}
-            />
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Natali Romanuik</Text>
-              <Text style={styles.profileEmail}>email@example.com</Text>
-            </View>
+    <View style={styles.container}>
+      <View>
+        <View style={styles.profileContainer}>
+          <Image
+            source={{
+              uri: "https://ui-avatars.com/api/?name=Natali+Romanuik&background=random",
+            }}
+            style={styles.profileImage}
+          />
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>Natali Romanuik</Text>
+            <Text style={styles.profileEmail}>email@example.com</Text>
           </View>
         </View>
-        <View style={styles.postContainer}>
+      </View>
+      <FlatList
+        data={posts}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.postContainer}>
+            <PostImage source={{ uri: item.photo }} />
+            <Text style={styles.imageTitle}>{item.namePost}</Text>
+            <View style={styles.detailsBox}>
+              <TouchableOpacity
+                onPress={handleGoComments}
+                style={styles.commentsButton}
+              >
+                <EvilIcons name="comment" size={24} color="#fff" />
+                <Text style={styles.commentsButtonText}>0</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleGoMap}
+                style={styles.locationButton}
+              >
+                <EvilIcons name="location" size={24} color="#fff" />
+                <Text style={styles.locationButtonText}>
+                  {item.locationName}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      />
+      {/* <View style={styles.postContainer}>
           <PostImage source={require("../../assets/images/post_1.jpg")} />
 
           <Text style={styles.imageTitle}>Forest</Text>
@@ -83,9 +125,8 @@ export const PostsScreen = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
-    </ScrollView>
+        </View> */}
+    </View>
   );
 };
 
