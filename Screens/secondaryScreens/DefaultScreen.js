@@ -9,24 +9,12 @@ import { MapScreen } from "./MapScreen";
 const Stack = createStackNavigator();
 
 export const DefaultScreen = ({ navigation, route }) => {
-  console.log("defaultScreen", route.params);
-  // const [posts, setPosts] = useState([]);
-  // const photo = route.params;
-  // console.log("DefaultScreen ~ photo:", photo);
-
-  // useEffect(() => {
-  //   setPosts((prevState) => {
-  //     console.log("prevState", prevState);
-  //     return [...prevState, photo];
-  //   });
-  // }, [photo]);
-  // console.log("те що записується в стейт", posts);
+  // console.log("DefaultScreen ~ route:", route);
   return (
     <Stack.Navigator>
       <Stack.Screen
         name="PostsScreen"
         options={{ headerShown: false }}
-        initialParams={{ post: route.params }}
         component={PostsScreen}
       />
       <Stack.Screen
@@ -37,7 +25,6 @@ export const DefaultScreen = ({ navigation, route }) => {
       <Stack.Screen
         name="Map"
         options={{ headerShown: false }}
-        initialParams={{ location: route.params.location }}
         component={MapScreen}
       />
     </Stack.Navigator>

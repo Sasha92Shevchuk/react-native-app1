@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,45 +6,79 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  FlatList,
 } from "react-native";
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
+
+import { useDispatch, useSelector } from "react-redux";
+
+import { authSignOutUser } from "../../redux/auth/authOperations";
+
 import { MaterialIcons } from "@expo/vector-icons";
+import { db, storage } from "../../firebase/config";
 
 import { DeletePhotoButton } from "../../components/DeletePhotoButton/DeletePhotoButton";
 import { BackgroundImage } from "../../components/BackgroundImage/BackgroundImage";
 import { PostCard } from "../../components/PostCard/PostCard";
 
-export const ProfileScreen = () => {
-  const handleLogout = () => {
-    navigation.navigate("Login");
+export const ProfileScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const [userPosts, setUserPosts] = useState();
+  const { userId } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    getUserPosts();
+  }, []);
+
+  const getUserPosts = async () => {
+    const postsRef = await collection(db, "posts");
+    const q = query(postsRef, where("userId", "==", userId));
+    onSnapshot(q, (snapshot) => {
+      setUserPosts(snapshot.docs.map((doc) => ({ ...doc.data() })));
+    });
+  };
+
+  const handleLogOut = () => {
+    dispatch(authSignOutUser());
   };
   const addPhoto = () => {
     Alert.alert("Add Photo");
   };
   return (
     <BackgroundImage>
-      <ScrollView>
-        <View style={styles.container}>
-          <View style={styles.wrapper}>
-            <View style={styles.delPhotoBox}>
-              <View style={styles.photoProfile}>
-                <Image
-                  source={require("../../assets/images/photoProfile.jpg")}
-                  style={styles.profileImage}
-                />
-                <DeletePhotoButton onPress={addPhoto} />
+      <FlatList
+        data={userPosts}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.container}>
+            <View style={styles.wrapper}>
+              <View style={styles.delPhotoBox}>
+                <View style={styles.photoProfile}>
+                  <Image
+                    source={require("../../assets/images/photoProfile.jpg")}
+                    style={styles.profileImage}
+                  />
+                  <DeletePhotoButton onPress={addPhoto} />
+                </View>
               </View>
+              <TouchableOpacity
+                onPress={handleLogOut}
+                style={styles.logoutButton}
+              >
+                <MaterialIcons name="logout" size={24} color="#E8E8E8" />
+              </TouchableOpacity>
+              <Text style={styles.nameProfile}>{item.nickName}</Text>
+              <PostCard post={userPosts} />
             </View>
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={styles.logoutButton}
-            >
-              <MaterialIcons name="logout" size={24} color="#E8E8E8" />
-            </TouchableOpacity>
-            <Text style={styles.nameProfile}>Natali Romanova</Text>
-            <PostCard />
           </View>
-        </View>
-      </ScrollView>
+        )}
+      />
     </BackgroundImage>
   );
 };

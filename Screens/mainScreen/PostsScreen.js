@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-
-import { EvilIcons } from "@expo/vector-icons";
+import { collection, getDocs, onSnapshot } from "firebase/firestore";
 import {
   View,
   Text,
@@ -10,29 +9,40 @@ import {
   SafeAreaView,
   FlatList,
 } from "react-native";
+import { EvilIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { db, storage } from "../../firebase/config";
 
 import { PostImage } from "../../components/PostImage/PostImage";
 
 export const PostsScreen = ({ navigation, route }) => {
   const [posts, setPosts] = useState([]);
-  const { post } = route.params;
-  console.log("PostsScreen ~ post:", post);
-  const { location } = route.params.post;
-  console.log("PostsScreen ~ location:", location);
+  console.log("PostsScreen ~ posts:", posts);
+
+  const getAllPostFromFirestore = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, "posts"));
+      setPosts(snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
-    if (post) {
-      setPosts((prevState) => [...prevState, post]);
-    }
-  }, [post]);
-  console.log("те що записується в стейт", posts);
+    getAllPostFromFirestore();
+    const unsubscribe = onSnapshot(collection(db, "posts"), (snapshot) => {
+      setPosts(snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+    });
 
-  const handleGoComments = () => {
-    navigation.navigate("Comments");
+    return () => unsubscribe();
+  }, []);
+
+  const handleGoComments = (item) => {
+    navigation.navigate("Comments", { photo: item.photo, id: item.id });
   };
-  const handleGoMap = () => {
-    navigation.navigate("Map");
+  const handleGoMap = (location) => {
+    navigation.navigate("Map", { location });
   };
   return (
     <View style={styles.container}>
@@ -59,14 +69,14 @@ export const PostsScreen = ({ navigation, route }) => {
             <Text style={styles.imageTitle}>{item.namePost}</Text>
             <View style={styles.detailsBox}>
               <TouchableOpacity
-                onPress={handleGoComments}
+                onPress={() => handleGoComments(item)}
                 style={styles.commentsButton}
               >
                 <EvilIcons name="comment" size={24} color="#fff" />
                 <Text style={styles.commentsButtonText}>0</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={handleGoMap}
+                onPress={() => handleGoMap(item.location)}
                 style={styles.locationButton}
               >
                 <EvilIcons name="location" size={24} color="#fff" />
@@ -78,54 +88,6 @@ export const PostsScreen = ({ navigation, route }) => {
           </View>
         )}
       />
-      {/* <View style={styles.postContainer}>
-          <PostImage source={require("../../assets/images/post_1.jpg")} />
-
-          <Text style={styles.imageTitle}>Forest</Text>
-
-          <View style={styles.detailsBox}>
-            <TouchableOpacity
-              onPress={handleGoComments}
-              style={styles.commentsButton}
-            >
-              <EvilIcons name="comment" size={24} color="#fff" />
-              <Text style={styles.commentsButtonText}>0</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleGoMap}
-              style={styles.locationButton}
-            >
-              <EvilIcons name="location" size={24} color="#fff" />
-              <Text style={styles.locationButtonText}>
-                Ivano-Frankivs'k Region, Ukraine
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.postContainer}>
-          <PostImage source={require("../../assets/images/post_2.jpg")} />
-
-          <Text style={styles.imageTitle}>Sunset</Text>
-
-          <View style={styles.detailsBox}>
-            <TouchableOpacity
-              onPress={handleGoComments}
-              style={styles.commentsButton}
-            >
-              <EvilIcons name="comment" size={24} color="#fff" />
-              <Text style={styles.commentsButtonText}>0</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleGoMap}
-              style={styles.locationButton}
-            >
-              <EvilIcons name="location" size={24} color="#fff" />
-              <Text style={styles.locationButtonText}>
-                Ivano-Frankivs'k Region, Ukraine
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View> */}
     </View>
   );
 };

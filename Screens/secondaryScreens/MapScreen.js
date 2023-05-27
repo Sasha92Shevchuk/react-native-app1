@@ -13,9 +13,6 @@ export const MapScreen = ({ navigation, route }) => {
   console.log("MapScreen ~ route:", route.params);
   const { location } = route.params;
 
-  const handleGoBack = () => {
-    navigation.goBack();
-  };
   return (
     <View style={styles.container}>
       <MapView
@@ -41,7 +38,7 @@ export const MapScreen = ({ navigation, route }) => {
           description="Hello"
         />
       </MapView>
-      <TouchableOpacity style={styles.goBackBtn} onPress={handleGoBack}>
+      <TouchableOpacity style={styles.goBackBtn} onPress={navigation.goBack}>
         <Text style={{ color: "red" }}>Go Back</Text>
       </TouchableOpacity>
     </View>

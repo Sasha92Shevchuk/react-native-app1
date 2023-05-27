@@ -11,8 +11,13 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
+
+import { useDispatch } from "react-redux";
+
 import { AddPhotoButton } from "../../components/AddPhotoButton/AddPhotoButton";
 import { BackgroundImage } from "../../components/BackgroundImage/BackgroundImage";
+
+import { authSignUpUser } from "../../redux/auth/authOperations";
 
 const initialState = {
   login: "",
@@ -26,6 +31,8 @@ export const RegistrationScreen = ({ navigation }) => {
   const [isShowKeyboard, setIsShowKeyboard] = useState(false);
 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  const dispatch = useDispatch();
 
   const showKeyboard = () => {
     setIsShowKeyboard(true);
@@ -41,11 +48,9 @@ export const RegistrationScreen = ({ navigation }) => {
   const onRegistered = () => {
     dismissKeyboard();
     Keyboard.dismiss();
+    dispatch(authSignUpUser(state));
     setState(initialState);
-    // Alert.alert(
-    //   "Credentials",
-    //   `${state.login} + ${state.email} + ${state.password}`
-    // );
+
     navigation.navigate("HomeScreen");
   };
   // const onGoLogIn = () => {

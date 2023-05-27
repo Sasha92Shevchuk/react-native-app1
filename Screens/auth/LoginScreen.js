@@ -8,10 +8,14 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
+
+import { useDispatch } from "react-redux";
+
+import { authSignInUser } from "../../redux/auth/authOperations";
+
 import { BackgroundImage } from "../../components/BackgroundImage/BackgroundImage";
 
 const initialState = {
@@ -26,6 +30,9 @@ export const LoginScreen = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const [isShowKeyboard, setIsShowKeyboard] = useState(false);
+
+  const dispatch = useDispatch();
+
   const showKeyboard = () => {
     setIsShowKeyboard(true);
   };
@@ -41,9 +48,9 @@ export const LoginScreen = () => {
     dismissKeyboard();
     Keyboard.dismiss();
     setState(initialState);
-    // Alert.alert("Credentials", `${state.email} + ${state.password}`);
-    // navigation.navigate("HomeScreen", { email: state.email });
-    navigation.navigate("HomeScreen", { screen: "CreatePosts" });
+    dispatch(authSignInUser(state));
+    navigation.navigate("HomeScreen");
+    // navigation.navigate("HomeScreen", { screen: "CreatePosts" });
   };
 
   return (

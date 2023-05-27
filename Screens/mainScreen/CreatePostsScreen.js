@@ -10,7 +10,12 @@ import {
   Dimensions,
   Image,
   TextInput,
+  Keyboard,
 } from "react-native";
+
+import { collection, addDoc } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { db, storage } from "../../firebase/config";
 
 import { EvilIcons } from "@expo/vector-icons";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -18,67 +23,62 @@ import { Camera, CameraType } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 
 import * as Location from "expo-location";
+import { useSelector } from "react-redux";
 
 const windowWidth = Dimensions.get("window").width - 32;
 
 export const CreatePostsScreen = ({ navigation }) => {
   const [namePost, setNamePost] = useState("");
   const [location, setLocation] = useState(null);
+  console.log("CreatePostsScreen ~ location:", location);
   const [locationName, setLocationName] = useState("");
-
-  // const [type, setType] = useState(CameraType.back);
-  // const [cameraPermission, setCameraPermission] = useState(null);
-  // const [mediaPermission, setMediaPermission] = useState(null);
-  // const cameraRef = useRef(null);
-  // const [photo, setPhoto] = useState(null);
-  // const isFocused = useIsFocused();
+  console.log("CreatePostsScreen ~ locationName:", locationName);
 
   const [camera, setCamera] = useState(null);
   const [photo, setPhoto] = useState(null);
+  // console.log("CreatePostsScreen ~ photo:", photo);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     const { status: cameraStatus } =
-  //       await Camera.requestCameraPermissionsAsync();
-  //     setCameraPermission(cameraStatus === "granted");
+  const { userId, nickName } = useSelector((state) => state.auth);
 
-  //     const { status: mediaStatus } =
-  //       await MediaLibrary.requestPermissionsAsync();
-  //     setMediaPermission(mediaStatus === "granted");
-  //   })();
-  // }, []);
+  // записав у useEffect
+  // const getLocationName = async () => {
+  //   let geocode = await Location.reverseGeocodeAsync(location);
+  //   if (geocode && geocode.length > 0) {
+  //     const { city, region, country } = geocode[0];
+  //     const locationName = `${city}, ${region}, ${country}`;
+  //     setLocationName(locationName);
+  //   }
+  // };
 
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setErrorMsg("Permission to access location was denied");
+        console.log("Permission to access location was denied");
         return;
+      }
+      let locationRes = await Location.getCurrentPositionAsync({});
+      //console.log("getCurrentLocation ~ location:", location);
+      const coords = {
+        latitude: locationRes.coords.latitude,
+        longitude: locationRes.coords.longitude,
+      };
+      console.log("конлось перед записом координат в стейт");
+      setLocation(coords);
+      // getLocationName();
+      let geocode = await Location.reverseGeocodeAsync(coords);
+      console.log("geocode:", geocode);
+      console.log("конлось після прочитання координат зі стейт");
+
+      if (geocode && geocode.length > 0) {
+        const { city, region, country } = geocode[0];
+        const locationName = `${city}, ${region}, ${country}`;
+        console.log("конлось перед записом назви міста в стейт");
+
+        setLocationName(locationName);
       }
     })();
   }, []);
-
-  // useEffect(() => {
-  //   if (isFocused) {
-  //     startCamera();
-  //   } else {
-  //     stopCamera();
-  //   }
-  // }, [isFocused]);
-
-  // const startCamera = async () => {
-  //   if (cameraPermission) {
-  //     console.log("startCamera ~ cameraPermission:", cameraPermission);
-  //     console.log(await cameraRef.current.resumePreview());
-  //     await cameraRef.current.resumePreview();
-  //   }
-  // };
-
-  // const stopCamera = async () => {
-  //   if (cameraPermission) {
-  //     await cameraRef.current.pausePreview();
-  //   }
-  // };
 
   const toggleCameraType = () => {
     setType((current) =>
@@ -87,61 +87,58 @@ export const CreatePostsScreen = ({ navigation }) => {
     console.log(type);
   };
 
-  // const handleTakePhoto = async () => {
-  //   if (cameraRef.current) {
-  //     const options = {
-  //       quality: 1,
-  //       pictureSize: { width: windowWidth, height: 240 },
-  //     };
-
-  //     const photo = await cameraRef.current.takePictureAsync(options);
-  //     setPhoto(photo.uri);
-  //     await MediaLibrary.createAssetAsync(photo.uri);
-  //     // console.log("photo", photo);
-  //   }
-  // };
-
   const handleGoMap = () => {
     navigation.navigate("Map");
   };
 
-  const getCurrentLocation = async () => {
-    let location = await Location.getCurrentPositionAsync({});
-    console.log("getCurrentLocation ~ location:", location);
-    const coords = {
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    };
-    setLocation(coords);
-
-    let geocode = await Location.reverseGeocodeAsync(coords);
-    if (geocode && geocode.length > 0) {
-      const { city, region, country } = geocode[0];
-      const locationName = `${city}, ${region}, ${country}`;
-      setLocationName(locationName);
-    }
-  };
-
   const handleTakePhoto = async () => {
     const photo = await camera.takePictureAsync();
-    getCurrentLocation();
     setPhoto(photo.uri);
-    console.log("photo", photo);
   };
 
   const newPost = {
+    userId,
+    nickName,
     photo,
     namePost,
     location,
     locationName,
   };
   const handlePhotoPublish = () => {
-    // console.log(navigation);
-    navigation.navigate("DefaultScreen", newPost);
+    uploadPostToServer();
+    navigation.navigate("DefaultScreen");
   };
   const handleDelete = () => {
     Alert.alert("Deleted");
   };
+
+  const uploadPostToServer = async () => {
+    const photoFromServer = await uploadPhotoToServer();
+    try {
+      const docRef = await addDoc(collection(db, "posts"), {
+        ...newPost,
+        photo: photoFromServer,
+      });
+      console.log("Document written with ID: ", docRef.id);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      throw e;
+    }
+  };
+
+  const uploadPhotoToServer = async () => {
+    const response = await fetch(photo);
+    const file = await response.blob();
+    const uniquePostId = Date.now().toString();
+    const storageRef = ref(storage, `postImage/${uniquePostId}`);
+    const data = await uploadBytes(storageRef, file, "postImage");
+    //console.log("uploadPhotoToServer ~ data:", data);
+    const processedPhoto = await getDownloadURL(
+      ref(storage, `postImage/${uniquePostId}`)
+    );
+    return processedPhoto;
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.postContainer}>
@@ -185,17 +182,19 @@ export const CreatePostsScreen = ({ navigation }) => {
             placeholder="Title"
             style={styles.input}
             // onFocus={() => showKeyboard()}
-            // onSubmitEditing={() => {
-            //   dismissKeyboard();
-            // }}
+            onSubmitEditing={() => {
+              Keyboard.dismiss();
+            }}
           />
         </View>
         <View style={styles.location}>
           <TouchableOpacity onPress={handleGoMap} style={styles.locationButton}>
             <EvilIcons name="location" size={24} color="#fff" />
-            <Text style={styles.locationButtonText}>
-              Ivano-Frankivs'k Region, Ukraine
-            </Text>
+            <TextInput
+              style={styles.locationButtonText}
+              value={locationName}
+              placeholder="Location..."
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -223,7 +222,7 @@ const styles = StyleSheet.create({
     marginTop: 34,
   },
   cameraContainer: {
-    height: 340,
+    height: 240,
     width: windowWidth,
     borderRadius: 8,
     overflow: "hidden",
@@ -308,3 +307,89 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
 });
+
+//цю функцію розбив частину в useEffect і частину в getLocationName
+// const getCurrentLocation = async () => {
+//   let location = await Location.getCurrentPositionAsync({});
+//   console.log("getCurrentLocation ~ location:", location);
+//   const coords = {
+//     latitude: location.coords.latitude,
+//     longitude: location.coords.longitude,
+//   };
+//   setLocation(coords);
+//   //можна цей метод винести там де потрібно вже саму назву, coords записуються в стейт, який пишеться на db
+//   let geocode = await Location.reverseGeocodeAsync(coords);
+//   if (geocode && geocode.length > 0) {
+//     const { city, region, country } = geocode[0];
+//     const locationName = `${city}, ${region}, ${country}`;
+//     setLocationName(locationName);
+//   }
+// };
+
+// try {
+//   const docRef = await addDoc(collection(db, "users"), {
+//     first: "Ada",
+//     last: "Lovelace",
+//     born: 1815,
+//   });
+//   console.log("Document written with ID: ", docRef.id);
+// } catch (e) {
+//   console.error("Error adding document: ", e);
+//   throw e;
+// }
+// вирізки для фото стара версія
+
+// const [type, setType] = useState(CameraType.back);
+// const [cameraPermission, setCameraPermission] = useState(null);
+// const [mediaPermission, setMediaPermission] = useState(null);
+// const cameraRef = useRef(null);
+// const [photo, setPhoto] = useState(null);
+// const isFocused = useIsFocused();
+
+// useEffect(() => {
+//   (async () => {
+//     const { status: cameraStatus } =
+//       await Camera.requestCameraPermissionsAsync();
+//     setCameraPermission(cameraStatus === "granted");
+
+//     const { status: mediaStatus } =
+//       await MediaLibrary.requestPermissionsAsync();
+//     setMediaPermission(mediaStatus === "granted");
+//   })();
+// }, []);
+
+// useEffect(() => {
+//   if (isFocused) {
+//     startCamera();
+//   } else {
+//     stopCamera();
+//   }
+// }, [isFocused]);
+
+// const startCamera = async () => {
+//   if (cameraPermission) {
+//     console.log("startCamera ~ cameraPermission:", cameraPermission);
+//     console.log(await cameraRef.current.resumePreview());
+//     await cameraRef.current.resumePreview();
+//   }
+// };
+
+// const stopCamera = async () => {
+//   if (cameraPermission) {
+//     await cameraRef.current.pausePreview();
+//   }
+// };
+
+// const handleTakePhoto = async () => {
+//   if (cameraRef.current) {
+//     const options = {
+//       quality: 1,
+//       pictureSize: { width: windowWidth, height: 240 },
+//     };
+
+//     const photo = await cameraRef.current.takePictureAsync(options);
+//     setPhoto(photo.uri);
+//     await MediaLibrary.createAssetAsync(photo.uri);
+//     // console.log("photo", photo);
+//   }
+// };
